@@ -319,7 +319,7 @@ body{font-family:'Microsoft JhengHei','微軟正黑體',Arial,sans-serif;backgro
   <span class="tl-lbl">1740</span>
   <input type="range" id="year-slider" min="1739" max="2026" value="2026" step="1"/>
   <span class="tl-lbl">2026</span>
-  <span id="year-display">2026 年</span>
+  <span id="year-display">2026</span>
   <span id="yr-era">🗺 Migration Timeline</span>
   <button id="map-toggle-btn">🗺 Map</button>
 </div>
@@ -565,9 +565,9 @@ function getPwd(){try{return JSON.parse(localStorage.getItem('zt_pwd'))||DEFAULT
 function setPwd(h){localStorage.setItem('zt_pwd',JSON.stringify(h));}
 function setSyncStatus(s){
   const dot=document.getElementById('dot'),txt=document.getElementById('sync-text');
-  if(s==='ok'){dot.className='dot ok';txt.textContent='已同步';}
-  else if(s==='wait'){dot.className='dot wait';txt.textContent='同步中…';}
-  else{dot.className='dot err';txt.textContent='連線失敗';}
+  if(s==='ok'){dot.className='dot ok';txt.textContent='Synced';}
+  else if(s==='wait'){dot.className='dot wait';txt.textContent='Syncing…';}
+  else{dot.className='dot err';txt.textContent='Connection Failed';}
 }
 function deepClone(o){return JSON.parse(JSON.stringify(o));}
 function personKey(name,gen){return `${gen}_${name.replace(/\s/g,'')}` ;}
@@ -666,8 +666,8 @@ function update(src){
   nu.attr('class',d=>{let c='node';if(d.depth===0)c+=' root';else if(d.data.is_pending)c+=' pending-node';else if(d.data.is_daughter)c+=' dau';else c+=' son';if(d.data.is_new)c+=' new-approved';if(d===selNode)c+=' sel';return c;});
   nu.select('circle').attr('r',d=>d.depth===0?14:d._children?10:8);
   nu.select('.nname').attr('x',d=>(d._children||(d.children&&d.children.length>0))?-14:14).attr('text-anchor',d=>(d._children||(d.children&&d.children.length>0))?'end':'start').attr('dy','0.35em').text(d=>{let t=d.data.name;if(d._children)t+=` [${cntDesc(d)}]`;return t;});
-  nu.select('.nname-pending').attr('x',d=>(d._children||(d.children&&d.children.length>0))?-14:14).attr('text-anchor',d=>(d._children||(d.children&&d.children.length>0))?'end':'start').attr('dy','1.55em').text(d=>d.data.is_pending?'（審核中）':'');
-  nu.select('.nbadge').attr('dy','-1.3em').attr('x',0).attr('text-anchor','middle').text(d=>`第${d.data.gen}世${d.data.is_daughter?'(女)':''}`);
+  nu.select('.nname-pending').attr('x',d=>(d._children||(d.children&&d.children.length>0))?-14:14).attr('text-anchor',d=>(d._children||(d.children&&d.children.length>0))?'end':'start').attr('dy','1.55em').text(d=>d.data.is_pending?'（Pending）':'');
+  nu.select('.nbadge').attr('dy','-1.3em').attr('x',0).attr('text-anchor','middle').text(d=>`Gen ${d.data.gen} ${d.data.is_daughter?'(F)':''}`);
   node.exit().remove();
   desc.forEach(d=>{d.x0=d.x;d.y0=d.y;});
 }
@@ -716,16 +716,16 @@ async function submitEdit(pKey,field,inputId){
   if(!val)return;
   // visual feedback
   const btn=inp.closest('.inline-edit')?.querySelector('.ie-ok');
-  if(btn){btn.textContent='送出中…';btn.disabled=true;}
+  if(btn){btn.textContent='Submitting…';btn.disabled=true;}
   try{
     const node=findAllNodes(root).find(d=>personKey(d.data.name,d.data.gen)===pKey);
     const pName=node?node.data.name:pKey;
     const key=await dbPush('pendingEdits',{personKey:pKey,personName:pName,field,newValue:val,submittedAt:new Date().toLocaleString('zh-TW'),status:'pending',_type:'edit'});
-    if(!key){if(btn){btn.textContent='❌ 失敗，請重試';btn.disabled=false;}return;}
+    if(!key){if(btn){btn.textContent='❌ Failed, please try again';btn.disabled=false;}return;}
     await loadAll();if(selNode)selectNode(selNode);
   }catch(e){
     console.error('submitEdit error:',e);
-    if(btn){btn.textContent='❌ 失敗';btn.disabled=false;}
+    if(btn){btn.textContent='❌ Failed';btn.disabled=false;}
   }
 }
 function openLightbox(src,cap){
@@ -766,7 +766,7 @@ async function uploadToStorage(path,dataUrl){
     r=await fetch(`${STORAGE}?name=${encodedPath}`,{method:'POST',headers:{'Content-Type':blob.type||'image/jpeg'},body:blob,signal:ctrl.signal});
   }finally{clearTimeout(tid);}
   const data=await r.json();
-  if(data.error)throw new Error('Storage 錯誤：'+data.error.message);
+  if(data.error)throw new Error('Storage Error: '+data.error.message);
   return `${STORAGE}/${encodedPath}?alt=media&token=${data.downloadTokens}`;
 }
 
@@ -781,7 +781,7 @@ async function uploadPhoto(pKey){
     showUploadMsg('壓縮中…',pKey);
     try{
       const compressed=await compressImage(file,200);
-      showUploadMsg('上傳至 Storage…',pKey);
+      showUploadMsg('Uploading to Storage…',pKey);
       const path=`photos/${safeKey}/${Date.now()}.jpg`;
       const url=await uploadToStorage(path,compressed);
       personPhotos[pKey]=url;
@@ -790,7 +790,7 @@ async function uploadPhoto(pKey){
       await dbSet('photos/'+pKey,url);
       showUploadMsg('',pKey);
       await loadAll();if(selNode)selectNode(selNode);
-    }catch(e){showUploadMsg('❌ 失敗：'+e.message,pKey);console.error(e);}
+    }catch(e){showUploadMsg('❌ Failed: '+e.message,pKey);console.error(e);}
     finally{try{document.body.removeChild(inp);}catch{}}
   };
   document.body.appendChild(inp);inp.click();
@@ -799,8 +799,8 @@ async function uploadPhoto(pKey){
 // ── Contact Info (auto-save, no approval needed) ──
 const CONTACT_FIELDS=[
   {key:'facebook', label:'Facebook', icon:'📘', placeholder:'Facebook profile URL', type:'url'},
-  {key:'email',    label:'Email',    icon:'📧', placeholder:'電子郵件地址',          type:'email'},
-  {key:'phone',    label:'Phone',     icon:'📞', placeholder:'phone號碼',              type:'tel'},
+  {key:'email',    label:'Email',    icon:'📧', placeholder:'Email address',          type:'email'},
+  {key:'phone',    label:'Phone',     icon:'📞', placeholder:'phone number',              type:'tel'},
   {key:'line',     label:'Line ID',  icon:'💬', placeholder:'Line ID',              type:'text'},
   {key:'other',    label:'Other',     icon:'🔗', placeholder:'Other Contact',          type:'text'},
 ];
@@ -878,7 +878,7 @@ function renderIntro(pKey){
     ${bodyHtml}
     <div class="intro-edit-area" id="intro-edit-${safeKey}">
       <textarea id="intro-ta-${safeKey}" placeholder="Write a biography or personal introduction...&#10;(Newlines supported, no character limit)">${intro.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
-      <div class="intro-hint">💡 現代族人可介紹自己；也可幫祖先記錄生平故事</div>
+      <div class="intro-hint">💡 Modern members can introduce themselves; you can also record ancestors' life stories</div>
       <div class="contact-inline-btns">
         <button class="ci-ok" onclick="saveIntro('${pKey}')">Save</button>
         <button class="ci-cancel" onclick="closeIntroEdit('${pKey}')">Cancel</button>
@@ -904,13 +904,13 @@ async function saveIntro(pKey){
   const bodyEl=document.getElementById('intro-body-'+safeKey);
   if(bodyEl){
     if(val){bodyEl.className='intro-body';bodyEl.innerHTML=val.replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-    else{bodyEl.className='intro-body empty';bodyEl.innerHTML='尚無簡介，點擊「✏ 編輯」填寫';}
+    else{bodyEl.className='intro-body empty';bodyEl.innerHTML='No biography yet. Click "✏ Edit" to add.';}
   }
   closeIntroEdit(pKey);
   await dbSet('contacts/'+pKey,personContacts[pKey]);
 }
 
-// ── 歷史簡介 ──
+// ── History & Biography ──
 function renderHistory(pKey){
   const ct=personContacts[pKey]||{};
   const histText=(ct.histText||'').trim();
@@ -923,27 +923,27 @@ function renderHistory(pKey){
   const safeKey=pKey.replace(/[^a-z0-9]/gi,'_');
   const bodyHtml=histText
     ?`<div class="hist-body" id="hist-body-${safeKey}">${histText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
-    :`<div class="hist-body empty" id="hist-body-${safeKey}">尚無歷史簡介，點擊「✏ 編輯」填寫</div>`;
+    :`<div class="hist-body empty" id="hist-body-${safeKey}">No historical background yet. Click "✏ Edit" to add.</div>`;
   const imgsHtml=histImgs.length===0?'':
     `<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">`+
     histImgs.map((url,i)=>
       `<div style="position:relative">
-        <img class="hist-img" src="${url}" onclick="openLightbox('${url}','歷史照片')" title="點擊放大" style="cursor:pointer"/>
+        <img class="hist-img" src="${url}" onclick="openLightbox('${url}','Historical Photo')" title="Click to enlarge" style="cursor:pointer"/>
         <button onclick="deleteHistoryImg('${pKey}',${i})" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">🗑 Delete</button>
       </div>`
     ).join('')+`</div>`;
   return `<div class="hist-section">
     <div class="hist-title">
-      <span>📜 歷史簡介</span>
+      <span>📜 History & Biography</span>
       <div style="display:flex;gap:6px">
-        <button class="hist-img-upload" onclick="uploadHistoryImg('${pKey}')">🖼 新增圖片</button>
+        <button class="hist-img-upload" onclick="uploadHistoryImg('${pKey}')">🖼 Add Image</button>
         <button class="contact-edit-btn" onclick="openHistoryEdit('${pKey}')">✏ Edit</button>
       </div>
     </div>
     ${bodyHtml}
     ${imgsHtml}
     <div class="hist-edit-area" id="hist-edit-${safeKey}">
-      <textarea id="hist-ta-${safeKey}" placeholder="記錄這位族人的歷史背景、生平事蹟、家族故事…&#10;（支援換行，無字數限制）">${histText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+      <textarea id="hist-ta-${safeKey}" placeholder="Record historical background, life events, family stories...&#10;(Newlines supported, no word limit)">${histText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
       <div class="contact-inline-btns">
         <button class="ci-ok" onclick="saveHistory('${pKey}')">Save</button>
         <button class="ci-cancel" onclick="closeHistoryEdit('${pKey}')">Cancel</button>
@@ -969,7 +969,7 @@ async function saveHistory(pKey){
   const bodyEl=document.getElementById('hist-body-'+safeKey);
   if(bodyEl){
     if(val){bodyEl.className='hist-body';bodyEl.innerHTML=val.replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-    else{bodyEl.className='hist-body empty';bodyEl.innerHTML='尚無歷史簡介，點擊「✏ 編輯」填寫';}
+    else{bodyEl.className='hist-body empty';bodyEl.innerHTML='No historical background yet. Click "✏ Edit" to add.';}
   }
   closeHistoryEdit(pKey);
   await dbSet('contacts/'+pKey,personContacts[pKey]);
@@ -990,10 +990,10 @@ async function uploadHistoryImg(pKey){
   inp.onchange=async()=>{
     const file=inp.files[0];if(!file)return;
     const safeKey=pKey.replace(/[^a-z0-9]/gi,'_');
-    showUploadMsg('壓縮中…',pKey);
+    showUploadMsg('Compressing…',pKey);
     try{
       const compressed=await compressImage(file,200);
-      showUploadMsg('上傳至 Storage…',pKey);
+      showUploadMsg('Uploading to Storage…',pKey);
       const path=`history/${safeKey}/${Date.now()}.jpg`;
       const url=await uploadToStorage(path,compressed);
       if(!personContacts[pKey])personContacts[pKey]={};
@@ -1012,7 +1012,7 @@ async function uploadHistoryImg(pKey){
       await dbSetWithTimeout('contacts/'+pKey+'/histImgs',_imgs,15000);
       showUploadMsg('',pKey);
       await loadAll();if(selNode)selectNode(selNode);
-    }catch(e){showUploadMsg('❌ 失敗：'+e.message,pKey);console.error(e);}
+    }catch(e){showUploadMsg('❌ Failed: '+e.message,pKey);console.error(e);}
     finally{try{document.body.removeChild(inp);}catch{}}
   };
   document.body.appendChild(inp);inp.click();
@@ -1028,12 +1028,12 @@ function selectNode(d){
   const photo=personPhotos[pKey]||null;
   const photoEl=photo
     ?`<div style="position:relative;flex-shrink:0">
-        <img class="person-photo" src="${photo}" onclick="openLightbox('${photo}','${data.name} 照片')"/>
-        <div onclick="uploadPhoto('${pKey}')" style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--gold);border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px" title="更換照片">✏️</div>
+        <img class="person-photo" src="${photo}" onclick="openLightbox('${photo}','${data.name} Photo')"/>
+        <div onclick="uploadPhoto('${pKey}')" style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-radius:50%;background:var(--gold);border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px" title="Change Photo">✏️</div>
       </div>`
-    :`<div class="photo-placeholder" onclick="uploadPhoto('${pKey}')">📷<br>新增<br>照片</div>`;
+    :`<div class="photo-placeholder" onclick="uploadPhoto('${pKey}')">📷<br>Add<br>Photo</div>`;
   const tag=d.depth===0?'root-tag':data.is_daughter?'dau':'son';
-  const tagLabel=d.depth===0?'始祖':data.is_daughter?'Daughter':'男丁';
+  const tagLabel=d.depth===0?'Root Ancestor':data.is_daughter?'Daughter':'Son';
   const children=[...(data.children||[]),...(data._children||[])];
   document.getElementById('ic').innerHTML=`
     <div class="person-header">
@@ -1044,10 +1044,10 @@ function selectNode(d){
       </div>
     </div>
     <div id="upload-status-${safeKey}" style="display:none;font-size:12px;color:var(--muted);padding:4px 0;text-align:center"></div>
-    ${makeEditableRow('Generation','🏮','gen',data.gen?`第${data.gen}世`:'',pKey)}
+    ${makeEditableRow('Generation','🏮','gen',data.gen?`Gen${data.gen}`:'',pKey)}
     ${makeEditableRow('Spouse','💑','spouse',data.spouse||'',pKey)}
     ${makeEditableRow('Birth–Death','📅','bd',data.bd||'',pKey)}
-    ${makeEditableRow('子女','👶','children',children.map(c=>c.name).join('、')||'',pKey)}
+    ${makeEditableRow('Children','👶','children',children.map(c=>c.name).join('、')||'',pKey)}
     ${renderHistory(pKey)}
     ${renderContacts(pKey)}
   `;
@@ -1115,22 +1115,22 @@ function updateAdminBadge(){
 }
 function renderAdminList(arr,containerId,type){
   const el=document.getElementById(containerId);
-  if(!arr.length){el.innerHTML='<div class="emsg">（無資料）</div>';return;}
+  if(!arr.length){el.innerHTML='<div class="emsg">（No data）</div>';return;}
   el.innerHTML=arr.map(item=>{
     const info=type==='pending'
-      ?`<div class="admin-card-info">父親：${item.parentName||'-'}　Gen: ${item.gen||'-'} · Gender: ${item.gender==='dau'?'Female':'Male'}</div>
-         <div class="admin-card-info">配偶：${item.spouse||'-'}　生卒：${item.bd||'-'}</div>
-         <div class="admin-card-info" style="color:var(--muted)">申請人：${item.submitter||'匿名'}　${item.submittedAt||''}</div>`
+      ?`<div class="admin-card-info">Father：${item.parentName||'-'}　Gen: ${item.gen||'-'} · Gender: ${item.gender==='dau'?'Female':'Male'}</div>
+         <div class="admin-card-info">Spouse：${item.spouse||'-'}　Birth-Death：${item.bd||'-'}</div>
+         <div class="admin-card-info" style="color:var(--muted)">Submitter：${item.submitter||'Anonymous'}　${item.submittedAt||''}</div>`
       :type==='edit'
-      ?`<div class="admin-card-info">欄位：${item.field}　→　${item.newValue}</div>
+      ?`<div class="admin-card-info">Field：${item.field}　→　${item.newValue}</div>
          <div class="admin-card-info" style="color:var(--muted)">${item.submittedAt||''}</div>`
       :`<div class="admin-card-info">Parent: ${item.parentName||'-'} · Gen: ${item.gen||'-'}</div>`;
     return `<div class="admin-card">
-      <div class="admin-card-name">${item.name||item.personName||'（未知）'}</div>
+      <div class="admin-card-name">${item.name||item.personName||'（Unknown）'}</div>
       ${info}
       ${isAdmin?`<div style="display:flex;gap:8px;margin-top:8px">
-        <button class="a-approve" onclick="approveItem('${item._fbKey}','${type}')">✅ 核准</button>
-        <button class="a-reject" onclick="rejectItem('${item._fbKey}','${type}')">❌ 拒絕</button>
+        <button class="a-approve" onclick="approveItem('${item._fbKey}','${type}')">✅ Approve</button>
+        <button class="a-reject" onclick="rejectItem('${item._fbKey}','${type}')">❌ Reject</button>
       </div>`:''}
     </div>`;
   }).join('');
@@ -1158,25 +1158,25 @@ async function rejectItem(key,type){
 function renderPendingTab(){
   const combined=[...pending.map(x=>({...x,_adminType:'pending'})),...pendingEdits.map(x=>({...x,_adminType:'edit'}))];
   const el=document.getElementById('pending-list');
-  if(!combined.length){el.innerHTML='<div class="emsg">（目前無待審項目）</div>';return;}
+  if(!combined.length){el.innerHTML='<div class="emsg">（No pending items）</div>';return;}
   el.innerHTML=combined.map(item=>{
     const t=item._adminType;
-    const title=t==='edit'?`✏️ 修改申請：${item.personName||item.name}`:(`＋ 新增族人：${item.name}`);
+    const title=t==='edit'?`✏️ Edit Request：${item.personName||item.name}`:(`＋ New Person：${item.name}`);
     const info=t==='edit'
-      ?`<div class="admin-card-info">欄位：${item.field}　→　${item.newValue}</div><div class="admin-card-info" style="color:var(--muted)">${item.submittedAt||''}</div>`
-      :`<div class="admin-card-info">父親：${item.parentName||'-'}　Gen: ${item.gen||'-'} · Gender: ${item.gender==='dau'?'Female':'Male'}</div><div class="admin-card-info">配偶：${item.spouse||'-'}　生卒：${item.bd||'-'}</div><div class="admin-card-info" style="color:var(--muted)">申請人：${item.submitter||'匿名'}　${item.submittedAt||''}</div>`;
+      ?`<div class="admin-card-info">Field：${item.field}　→　${item.newValue}</div><div class="admin-card-info" style="color:var(--muted)">${item.submittedAt||''}</div>`
+      :`<div class="admin-card-info">Father：${item.parentName||'-'}　Gen: ${item.gen||'-'} · Gender: ${item.gender==='dau'?'Female':'Male'}</div><div class="admin-card-info">Spouse：${item.spouse||'-'}　Birth-Death：${item.bd||'-'}</div><div class="admin-card-info" style="color:var(--muted)">Submitter：${item.submitter||'Anonymous'}　${item.submittedAt||''}</div>`;
     return `<div class="admin-card">
       <div class="admin-card-name">${title}</div>${info}
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="a-approve" onclick="approveItem('${item._fbKey}','${t}')">✅ 核准</button>
-        <button class="a-reject" onclick="rejectItem('${item._fbKey}','${t}')">❌ 拒絕</button>
+        <button class="a-approve" onclick="approveItem('${item._fbKey}','${t}')">✅ Approve</button>
+        <button class="a-reject" onclick="rejectItem('${item._fbKey}','${t}')">❌ Reject</button>
       </div>
     </div>`;
   }).join('');
 }
 function renderApprovedTab(){
   const el=document.getElementById('approved-list');
-  if(!approved.length){el.innerHTML='<div class="emsg">（尚無已核准族人）</div>';return;}
+  if(!approved.length){el.innerHTML='<div class="emsg">（No approved persons）</div>';return;}
   el.innerHTML=approved.map(item=>`<div class="admin-card">
     <div class="admin-card-name">${item.name}</div>
     <div class="admin-card-info">Parent: ${item.parentName||'-'} · Gen: ${item.gen||'-'}</div>
@@ -1196,7 +1196,7 @@ async function submitAdd(){
   const submitter=document.getElementById('f-submitter').value.trim();
   const okEl=document.getElementById('add-ok');const errEl=document.getElementById('add-err');
   okEl.style.display='none';errEl.style.display='none';
-  if(!name||!gen||!parent){errEl.textContent='請填寫姓名、世代、父親姓名。';errEl.style.display='block';return;}
+  if(!name||!gen||!parent){errEl.textContent='Please fill in the name, generation, and father\'s name.';errEl.style.display='block';return;}
   await dbPush('pending',{name,gen:parseInt(gen),parentName:parent,gender,spouse,bd,note,submitter,submittedAt:new Date().toLocaleString('zh-TW'),status:'pending'});
   okEl.style.display='block';
   document.getElementById('f-name').value='';document.getElementById('f-gen').value='';
@@ -1211,8 +1211,8 @@ async function submitReport(){
   const submitter=document.getElementById('r-submitter').value.trim();
   const okEl=document.getElementById('report-ok');const errEl=document.getElementById('report-err');
   okEl.style.display='none';errEl.style.display='none';
-  if(!correct){errEl.textContent='請填寫正確內容。';errEl.style.display='block';return;}
-  if(!selNode){errEl.textContent='請先選擇族人。';errEl.style.display='block';return;}
+  if(!correct){errEl.textContent='Please fill in the correct content.';errEl.style.display='block';return;}
+  if(!selNode){errEl.textContent='Please select a person first.';errEl.style.display='block';return;}
   const pKey=personKey(selNode.data.name,selNode.data.gen);
   await dbPush('pendingEdits',{personKey:pKey,personName:selNode.data.name,field,newValue:correct,note,submitter,submittedAt:new Date().toLocaleString('zh-TW'),status:'pending',_type:'edit'});
   okEl.style.display='block';
@@ -1330,7 +1330,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   // Report modal
   document.getElementById('report-btn').addEventListener('click',()=>{
     if(!selNode)return;
-    document.getElementById('report-target-info').textContent=`對象：${selNode.data.name}（第${selNode.data.gen}世）`;
+document.getElementById('report-target-info').textContent=`Target: ${selNode.data.name} (Gen ${selNode.data.gen})`;
     document.getElementById('report-ok').style.display='none';document.getElementById('report-err').style.display='none';
     document.getElementById('report-overlay').classList.add('show');
   });
@@ -1450,25 +1450,25 @@ const BIRTH_YEAR_BY_GEN = {
 // ── 2. 遷徙地點資料 ──
 const MIGRATION_LOCS = [
   {
-    id:'meixian', name:'廣東梅縣',
+    id:'meixian', name:'Guangdong Meixian',
     lat:24.2883, lng:116.1170,
     startYear:1600, color:'#8b1a1a',
     era:'Place of Origin', icon:'🏡',
     note:'Guangdong Meixian (廣東梅縣)<br/>Ancestral homeland of the Chang lineage (張氏宗族)<br/>Settled here from the late Ming dynasty'
   },
   {
-    id:'yongjing', name:'彰化員林・永靖',
+    id:'yongjing', name:'Changhua Yuanlin & Yongjing',
     lat:23.9255, lng:120.5389,
     startYear:1740, color:'#2a6cb5',
     era:'Qianlong Migration', icon:'⚓',
     note:'Changhua Yongjing (彰化永靖)<br/>5th year of Qianlong reign (1740)<br/>14th-gen pioneer ancestor crossed the Taiwan Strait<br/>with 4 sons and 10 grandchildren · Settled for 80+ years'
   },
   {
-    id:'yamukeng', name:'苗栗鴨母坑',
+    id:'yamukeng', name:'Miaoli Yamukeng',
     lat:24.4745, lng:120.7565,
     startYear:1824, color:'#1a6b3e',
     era:'Daoguang Migration', icon:'🌾',
-    note:'道光4年（1824年）<br/>16世<b>斯裕公</b>婆<b>錢氏</b>率子<b>鼎常公</b><br/>及孫輩<b>義成公</b>等18人北遷<br/>至苗栗鴨母坑現址定居，傳承至今'
+    note:'Daoguang 4th Year (1824)<br/>16th Gen <b>Siyu</b> & wife <b>Qian</b> led son <b>Dingchang</b><br/>and grandsons (18 people) northward<br/>to settle in Miaoli Yamukeng.'
   }
 ];
 
@@ -1572,11 +1572,11 @@ function renderAll(){
 // ── 6. 時代標籤 ──
 function getEraLabel(yr){
   if(yr < 1740) return '📍 Meixian, Guangdong · Pre-migration Era';
-  if(yr < 1824) return '⚓ 彰化員林永靖 · 開墾時期';
-  if(yr < 1911) return '🌾 苗栗鴨母坑 · 清末拓墾';
+  if(yr < 1824) return '⚓ Changhua Yongjing · Cultivation Era';
+  if(yr < 1911) return '🌾 Miaoli Yamukeng · Late Qing Settlement';
   if(yr < 1945) return '🏛 Japanese Colonial Period';
   if(yr < 1990) return '🌱 Post-War Period';
-  return '🏮 現代 · 第' + Math.max(...Object.keys(BIRTH_YEAR_BY_GEN).filter(g=>BIRTH_YEAR_BY_GEN[g]<=yr).map(Number)) + '世';
+  return '🏮 Modern · Generation ' + Math.max(...Object.keys(BIRTH_YEAR_BY_GEN).filter(g=>BIRTH_YEAR_BY_GEN[g]<=yr).map(Number)) + '';
 }
 
 // ── 7. 滑桿事件 ──
@@ -1592,7 +1592,7 @@ function initSlider(){
 
   slider.addEventListener('input', function(){
     currentYear = parseInt(this.value);
-    display.textContent = currentYear + ' 年';
+    display.textContent = currentYear;
     eraEl.textContent = getEraLabel(currentYear);
     syncSliderStyle(currentYear);
     renderAll();
